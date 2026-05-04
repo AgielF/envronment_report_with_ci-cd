@@ -1,0 +1,39 @@
+version: '3.8'
+services:
+  # 1. Container Database Spasial
+  db:
+    image: postgis/postgis:15-3.3-alpine # Wajib PostGIS untuk kolom GEOMETRY
+    container_name: geolapor-db-local
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: geolapor
+    ports:
+      - "5432:5432"
+    volumes: # <--- TAMBAHKAN BAGIAN INI
+      - ./database.sql:/docker-entrypoint-initdb.d/init.sql
+
+  # 2. Container Backend
+  backend:
+    image: geolapor-backend
+    container_name: backend-test
+    ports:
+      - "3000:3000"
+    environment: 
+      - DB_HOST=db # Menunjuk ke nama service 'db' di atas
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password123
+      - DB_NAME=geolapor
+      - JWT_SECRET=rahasia_anda
+    depends_on:
+      - db
+    volumes: # <--- TAMBAHKAN DUA BARIS INI
+      - ./backend/uploads:/app/uploads
+
+  # 3. Container Frontend
+  frontend:
+    image: geolapor-frontend
+    container_name: frontend-test
+    ports:
+      - "8080:80"
