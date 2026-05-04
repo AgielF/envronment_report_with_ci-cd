@@ -70,7 +70,7 @@ jobs:
           # Menghubungkan Cloud Run ke Private Subnet (Cloud SQL) via VPC Connector
           flags: '--vpc-connector=geolapor-vpc-connector --allow-unauthenticated'
 
-      # ==============================
+    # ==============================
       # 3. BUILD & DEPLOY FRONTEND
       # ==============================
       - name: Build and Push Frontend Image
@@ -88,4 +88,5 @@ jobs:
           service: 'geolapor-frontend'
           image: '${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}'
           region: '${{ env.REGION }}'
-          flags: '--allow-unauthenticated'
+          # PERBAIKAN INTEGRASI: Menambahkan --port=80 agar sesuai dengan konfigurasi Nginx
+          flags: '--port=80 --allow-unauthenticated'
