@@ -18,17 +18,13 @@ const Register = () => {
       alert("Registrasi berhasil! Silakan login untuk melanjutkan.");
       navigate('/login');
     } catch (error) {
-      // 1. Cek apakah error berasal dari express-validator (format array "errors")
       if (error.response?.data?.errors) {
-        // Menggabungkan semua pesan error jika ada lebih dari satu
         const errorMessages = error.response.data.errors.map(err => err.msg).join('\n- ');
         alert(`Registrasi gagal karena:\n- ${errorMessages}`);
       } 
-      // 2. Cek apakah error dari respon manual backend (format "message" tunggal)
       else if (error.response?.data?.message) {
         alert(`Registrasi gagal: ${error.response.data.message}`);
       } 
-      // 3. Fallback jika server terputus sama sekali
       else {
         alert("Terjadi kesalahan jaringan atau server tidak merespon.");
       }

@@ -13,7 +13,7 @@ export const getMyReports = async () => {
 export const createReport = async (formData) => {
   const response = await api.post('/reports', formData, {
     headers: {
-      // Penting untuk upload file/foto bukti laporan
+      // Penting untuk upload file/foto bukti laporan ke Cloud Storage
       'Content-Type': 'multipart/form-data',
     },
   });

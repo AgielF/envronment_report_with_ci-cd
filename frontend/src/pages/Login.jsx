@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // Tambahkan Link di sini
+import { useNavigate, Link } from 'react-router-dom'; 
 import api from '../services/api';
 
 const Login = () => {
@@ -42,7 +42,6 @@ const Login = () => {
           </button>
         </form>
 
-        {/* Tautan ke halaman Register */}
         <p className="mt-8 text-center font-bold border-t-4 border-black pt-6">
           Belum punya akun? <br/>
           <Link to="/register" className="underline hover:bg-black hover:text-white px-1 mt-2 inline-block transition-colors">

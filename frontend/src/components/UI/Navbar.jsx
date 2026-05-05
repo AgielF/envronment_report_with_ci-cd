@@ -17,9 +17,7 @@ const Navbar = () => {
         <Link to="/" className="text-2xl font-bold uppercase tracking-wider hover:underline">GeoLapor</Link>
       </div>
       <div className="flex gap-4 md:gap-6 items-center font-bold">
-        <Link to="/" className="nav-logo">
-          Home
-        </Link>
+        <Link to="/" className="hover:underline">Home</Link>
         <Link to="/peta" className="hover:underline">Peta Sebaran</Link>
         {token ? (
             <>

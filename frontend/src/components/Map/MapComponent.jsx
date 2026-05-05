@@ -15,8 +15,8 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const MapComponent = ({ dataTitik }) => {
   const center = [-6.8977, 107.6335]; 
-  // PERBAIKAN: Sinkronisasi variabel CDN dengan Riwayat.jsx[cite: 4]
-  const CDN_BASE_URL = import.meta.env.VITE_CDN_URL || 'https://storage.googleapis.com/geolapor-storage-bucket'; 
+  // Menggunakan Cloud CDN untuk memuat foto bukti pelaporan dengan latensi rendah
+  const CDN_BASE_URL = import.meta.env.VITE_CDN_URL || 'https://storage.googleapis.com/geolapor-storage-agielf-vocal'; 
 
   return (
     <div className="h-[500px] w-full border-4 border-black shadow-[8px_8px_0_0_#000] bg-white z-0 relative">
@@ -32,7 +32,6 @@ const MapComponent = ({ dataTitik }) => {
               <p className="my-2 text-sm">{titik.deskripsi}</p>
               <small className="block mb-2 font-mono">Pelapor: {titik.pelapor}</small>
               <img 
-                // PERBAIKAN: Menghapus '/uploads/' agar sinkron dengan GCS[cite: 3, 4]
                 src={`${CDN_BASE_URL}/${titik.foto_url}`} 
                 alt="Bukti Laporan" 
                 className="w-full border-2 border-black"

@@ -51,25 +51,29 @@ jobs:
           docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }} ./geolapor-backend
           docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
 
-      - name: Deploy Backend to Cloud Run
+     - name: Deploy Backend to Cloud Run
         id: deploy-backend
         uses: 'google-github-actions/deploy-cloudrun@v2'
         with:
           service: 'geolapor-backend'
           image: '${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}'
           region: '${{ env.REGION }}'
-          # Menyuntikkan konfigurasi rahasia database dan JWT
+          # Pastikan nama variabel di sebelah kiri sama dengan process.env di Node.js Anda
           env_vars: |
             DB_HOST=${{ secrets.DB_HOST_PRIVATE }}
             DB_PORT=5432
             DB_USER=${{ secrets.DB_USER }}
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_PASS=${{ secrets.DB_PASSWORD }} 
             DB_NAME=${{ secrets.DB_NAME }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}
-          # Menghubungkan Cloud Run ke Private Subnet (Cloud SQL) via VPC Connector
-          flags: '--vpc-connector=geolapor-vpc-connector --allow-unauthenticated'
-
+          # PERBAIKAN KRITIS: Tambahkan instance SQL, egress traffic, dan service account
+          flags: |
+            --vpc-connector=geolapor-vpc-connector
+            --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:geolapor-db-instance
+            --vpc-egress=all-traffic
+            --allow-unauthenticated
+            --service-account=1019871963440-compute@developer.gserviceaccount.com
     # ==============================
       # 3. BUILD & DEPLOY FRONTEND
       # ==============================

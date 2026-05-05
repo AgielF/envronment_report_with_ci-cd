@@ -9,7 +9,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Ambil data profil dari storage
     const storedUser = localStorage.getItem('user');
     if (!storedUser) {
       navigate('/login');
@@ -17,7 +16,6 @@ const Dashboard = () => {
     }
     setUser(JSON.parse(storedUser));
 
-    // 2. Ambil data statistik laporan dari database
     const fetchStats = async () => {
       try {
         const reports = await getMyReports();
@@ -73,13 +71,11 @@ const Dashboard = () => {
         {/* Kolom Kanan: Statistik & Aksi Cepat */}
         <div className="md:col-span-2 space-y-8">
           
-          {/* Header Greeting */}
           <div className="bg-[#ffeb3b] border-4 border-black p-8 shadow-[8px_8px_0_0_#000]">
             <h1 className="text-3xl font-bold uppercase">Halo, {user.nama.split(' ')[0]}!</h1>
             <p className="mt-2 font-bold">Selamat datang kembali di Dashboard GeoLapor. Pantau kontribusi spasial Anda di sini.</p>
           </div>
 
-          {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0_0_#000]">
               <p className="uppercase font-bold text-sm text-gray-600">Total Laporan Anda</p>
@@ -91,7 +87,6 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Quick Actions */}
           <div className="bg-black text-white border-4 border-black p-6 shadow-[8px_8px_0_0_#ffeb3b]">
             <h3 className="text-xl font-bold uppercase mb-4">Aksi Cepat</h3>
             <div className="flex flex-wrap gap-4">
