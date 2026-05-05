@@ -2,7 +2,7 @@ name: Deploy GeoLapor to Cloud Run
 
 on:
   push:
-    branches: [ "main" ] # Memicu pipeline otomatis saat push ke branch main
+    branches: ["main"]
 
 env:
   PROJECT_ID: vocal-pad-493809-a2
@@ -15,31 +15,32 @@ jobs:
   deploy:
     name: Build and Deploy to GCP
     runs-on: ubuntu-latest
-    
-    # Izin (permissions) ini WAJIB ada saat menggunakan Workload Identity Federation
+
     permissions:
       contents: 'read'
       id-token: 'write'
 
     steps:
+      # ==============================
+      # 0. CHECKOUT
+      # ==============================
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
       # ==============================
-      # 1. AUTENTIKASI KE GCP (WIF)
+      # 1. AUTHENTICATION (WIF)
       # ==============================
       - name: Google Auth
         id: auth
-        uses: 'google-github-actions/auth@v2'
+        uses: google-github-actions/auth@v2
         with:
-          # Mengambil nilai Provider dan Email Service Account dari GitHub Secrets
-          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
-          service_account: '${{ secrets.SA_EMAIL }}'
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.SA_EMAIL }}
 
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v2'
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
-      - name: 'Docker Auth to Artifact Registry'
+      - name: Docker Auth to Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
       # ==============================
@@ -47,50 +48,53 @@ jobs:
       # ==============================
       - name: Build and Push Backend Image
         run: |
-          # PERBAIKAN DI SINI: Menggunakan path ./geolapor-backend
-          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }} ./geolapor-backend
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          docker build \
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
+            ./geolapor-backend
 
-     - name: Deploy Backend to Cloud Run
+          docker push \
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+
+      - name: Deploy Backend to Cloud Run
         id: deploy-backend
-        uses: 'google-github-actions/deploy-cloudrun@v2'
+        uses: google-github-actions/deploy-cloudrun@v2
         with:
-          service: 'geolapor-backend'
-          image: '${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}'
-          region: '${{ env.REGION }}'
-          # Pastikan nama variabel di sebelah kiri sama dengan process.env di Node.js Anda
+          service: geolapor-backend
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          region: ${{ env.REGION }}
           env_vars: |
             DB_HOST=${{ secrets.DB_HOST_PRIVATE }}
             DB_PORT=5432
             DB_USER=${{ secrets.DB_USER }}
-            DB_PASS=${{ secrets.DB_PASSWORD }} 
+            DB_PASS=${{ secrets.DB_PASSWORD }}
             DB_NAME=${{ secrets.DB_NAME }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}
-          # PERBAIKAN KRITIS: Tambahkan instance SQL, egress traffic, dan service account
           flags: |
             --vpc-connector=geolapor-vpc-connector
             --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:geolapor-db-instance
             --vpc-egress=all-traffic
             --allow-unauthenticated
             --service-account=1019871963440-compute@developer.gserviceaccount.com
-    # ==============================
+
+      # ==============================
       # 3. BUILD & DEPLOY FRONTEND
       # ==============================
       - name: Build and Push Frontend Image
         run: |
-          # Menyuntikkan URL dinamis Backend dan CDN saat proses build image Frontend
           docker build \
             --build-arg VITE_API_URL=${{ steps.deploy-backend.outputs.url }}/api \
             --build-arg VITE_CDN_URL=https://storage.googleapis.com/${{ secrets.GCS_BUCKET_NAME }} \
-            -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} ./frontend
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            ./frontend
+
+          docker push \
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
 
       - name: Deploy Frontend to Cloud Run
-        uses: 'google-github-actions/deploy-cloudrun@v2'
+        uses: google-github-actions/deploy-cloudrun@v2
         with:
-          service: 'geolapor-frontend'
-          image: '${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}'
-          region: '${{ env.REGION }}'
-          # PERBAIKAN INTEGRASI: Menambahkan --port=80 agar sesuai dengan konfigurasi Nginx
-          flags: '--port=80 --allow-unauthenticated'
+          service: geolapor-frontend
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+          region: ${{ env.REGION }}
+          flags: --port=80 --allow-unauthenticated
