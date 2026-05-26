@@ -15,8 +15,9 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const MapComponent = ({ dataTitik }) => {
   const center = [-6.8977, 107.6335]; 
-  // Menggunakan Cloud CDN untuk memuat foto bukti pelaporan dengan latensi rendah
-  const CDN_BASE_URL = import.meta.env.VITE_CDN_URL || 'https://storage.googleapis.com/geolapor-storage-agielf-vocal'; 
+  
+  // PERBAIKAN: Mengambil URL dasar murni dari Environment Variable
+  const CDN_BASE_URL = import.meta.env.VITE_CDN_URL; 
 
   return (
     <div className="h-[500px] w-full border-4 border-black shadow-[8px_8px_0_0_#000] bg-white z-0 relative">

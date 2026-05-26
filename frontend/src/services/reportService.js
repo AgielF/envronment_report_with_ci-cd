@@ -11,11 +11,7 @@ export const getMyReports = async () => {
 };
 
 export const createReport = async (formData) => {
-  const response = await api.post('/reports', formData, {
-    headers: {
-      // Penting untuk upload file/foto bukti laporan ke Cloud Storage
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  // BIARKAN AXIOS YANG MENGATUR HEADER DAN BOUNDARY SECARA OTOMATIS
+  const response = await api.post('/reports', formData);
   return response.data;
 };

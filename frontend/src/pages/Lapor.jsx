@@ -10,12 +10,18 @@ const Lapor = () => {
 
   useEffect(() => {
     if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        setLokasi({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-      });
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLokasi({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+        },
+        (error) => {
+          alert("Mohon izinkan akses lokasi (GPS) pada browser untuk mengirim laporan spasial.");
+          console.error("Error GPS:", error);
+        }
+      );
     }
   }, []);
 

@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   # 1. Container Database Spasial
   db:
@@ -10,30 +11,40 @@ services:
       POSTGRES_DB: geolapor
     ports:
       - "5432:5432"
-    volumes: # <--- TAMBAHKAN BAGIAN INI
+    volumes:
       - ./database.sql:/docker-entrypoint-initdb.d/init.sql
 
   # 2. Container Backend
   backend:
-    image: geolapor-backend
+    build: 
+      context: ./geolapor-backend # Membangun image langsung dari folder Anda
     container_name: backend-test
     ports:
       - "3000:3000"
     environment: 
-      - DB_HOST=db # Menunjuk ke nama service 'db' di atas
+      - DB_HOST=db
       - DB_PORT=5432
       - DB_USER=admin
       - DB_PASSWORD=password123
       - DB_NAME=geolapor
       - JWT_SECRET=rahasia_anda
+      - STORAGE_MODE=local # Memastikan foto disimpan di folder lokal
     depends_on:
       - db
-    volumes: # <--- TAMBAHKAN DUA BARIS INI
-      - ./backend/uploads:/app/uploads
+    volumes: 
+      # Diperbaiki: menyesuaikan dengan nama folder asli Anda
+      - ./geolapor-backend/uploads:/app/uploads
 
   # 3. Container Frontend
   frontend:
-    image: geolapor-frontend
+    build:
+      context: ./frontend
+      args:
+        # Menyuntikkan URL dinamis ke Vite saat proses kompilasi Nginx
+        VITE_API_URL: http://localhost:3000/api
+        VITE_CDN_URL: http://localhost:3000/uploads
     container_name: frontend-test
     ports:
       - "8080:80"
+    depends_on:
+      - backend

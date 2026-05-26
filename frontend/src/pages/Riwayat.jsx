@@ -5,8 +5,9 @@ const Riwayat = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // PERBAIKAN: Mengambil URL dari env Vite, fallback ke GCS public URL
-  const CDN_BASE_URL = import.meta.env.VITE_CDN_URL || 'https://storage.googleapis.com/geolapor-storage-bucket';
+  // PERBAIKAN: Nilai sekarang 100% dinamis mengikuti injeksi Docker/Vite.
+  // Jika di lokal akan mengarah ke localhost/uploads, jika di Azure akan mengarah ke URL Blob Storage.
+  const CDN_BASE_URL = import.meta.env.VITE_CDN_URL;
 
   useEffect(() => {
     const fetchMyReports = async () => {
@@ -58,7 +59,6 @@ const Riwayat = () => {
               </div>
 
               <img 
-                // PERBAIKAN: Menghapus '/uploads/' karena file kini langsung berada di root bucket GCS/CDN[cite: 3, 4]
                 src={`${CDN_BASE_URL}/${report.foto_url}`} 
                 alt="Bukti Insiden" 
                 className="w-full h-48 object-cover border-4 border-black"

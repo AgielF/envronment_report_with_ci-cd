@@ -1,21 +1,22 @@
 import pool from '../config/db.js';
 
-export const createReport = async (userId, judul, deskripsi, longitude, latitude, fotoUrl) => {
+export const createReport = async (userId, kategori, deskripsi, longitude, latitude, fotoUrl) => {
     const query = `
-        INSERT INTO reports (user_id, judul, deskripsi, longitude, latitude, foto_url, status)
-        VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+        INSERT INTO laporan_spasial (user_id, kategori, deskripsi, lokasi, foto_url, status)
+        VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, 'menunggu_validasi')
         RETURNING id
     `;
-    const result = await pool.query(query, [userId, judul, deskripsi, longitude, latitude, fotoUrl]);
+    const result = await pool.query(query, [userId, kategori, deskripsi, longitude, latitude, fotoUrl]);
     return result.rows[0];
 };
+
 export const fetchAllReports = async () => {
     const query = `
-        SELECT r.id, u.nama AS pelapor, r.judul, r.deskripsi, r.foto_url, r.status, r.created_at,
-               r.longitude, r.latitude
-        FROM reports r
+        SELECT r.id, u.nama AS pelapor, r.kategori, r.deskripsi, r.foto_url, r.status, r.waktu_lapor,
+               ST_X(r.lokasi) AS longitude, ST_Y(r.lokasi) AS latitude
+        FROM laporan_spasial r
         JOIN users u ON r.user_id = u.id
-        ORDER BY r.created_at DESC
+        ORDER BY r.waktu_lapor DESC
     `;
     const result = await pool.query(query);
     return result.rows;
@@ -23,11 +24,11 @@ export const fetchAllReports = async () => {
 
 export const fetchReportsByUser = async (userId) => {
     const query = `
-        SELECT id, judul, deskripsi, status, foto_url, created_at,
-               longitude, latitude
-        FROM reports
+        SELECT id, kategori, deskripsi, status, foto_url, waktu_lapor,
+               ST_X(lokasi) AS longitude, ST_Y(lokasi) AS latitude
+        FROM laporan_spasial
         WHERE user_id = $1
-        ORDER BY created_at DESC
+        ORDER BY waktu_lapor DESC
     `;
     const result = await pool.query(query, [userId]);
     return result.rows;
