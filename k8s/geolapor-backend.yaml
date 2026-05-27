@@ -1,0 +1,120 @@
+# 1. Ruang Penyimpanan Permanen untuk Database
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgis-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+# 2. Server PostGIS (Database)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: geolapor-db
+spec:
+  selector:
+    matchLabels:
+      app: geolapor-db
+  template:
+    metadata:
+      labels:
+        app: geolapor-db
+    spec:
+      containers:
+      - name: postgres
+        image: postgis/postgis:15-3.3-alpine
+        env:
+        - name: POSTGRES_USER
+          value: admin
+        - name: POSTGRES_PASSWORD
+          value: password123 # Aman di sini karena ini hanya di level server internal
+        - name: POSTGRES_DB
+          value: geolapor
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: db-data
+          mountPath: /var/lib/postgresql/data
+        - name: init-script
+          mountPath: /docker-entrypoint-initdb.d/
+      volumes:
+      - name: db-data
+        persistentVolumeClaim:
+          claimName: postgis-pvc
+      - name: init-script
+        configMap:
+          name: db-init-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: geolapor-db
+spec:
+  ports:
+  - port: 5432
+  selector:
+    app: geolapor-db
+---
+# 3. Server Backend
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: geolapor-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: geolapor-backend
+  template:
+    metadata:
+      labels:
+        app: geolapor-backend
+    spec:
+      containers:
+      - name: backend
+        image: DOCKER_IMAGE_PLACEHOLDER 
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DB_HOST
+          value: geolapor-db
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: admin
+        - name: DB_NAME
+          value: geolapor
+        - name: STORAGE_MODE
+          value: azure
+        # =============== BAGIAN AMAN ===============
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: geolapor-secrets
+              key: db-password
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: geolapor-secrets
+              key: jwt-secret
+        - name: AZURE_STORAGE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: geolapor-secrets
+              key: azure-conn-string
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: geolapor-backend-svc
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 3000
+  selector:
+    app: geolapor-backend

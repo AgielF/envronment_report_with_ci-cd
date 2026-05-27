@@ -1,24 +1,19 @@
-name: Deploy GeoLapor to Cloud Run
+name: Deploy GeoLapor to Azure AKS
 
 on:
   push:
     branches: ["main"]
 
 env:
-  PROJECT_ID: vocal-pad-493809-a2
-  REGION: asia-southeast2
-  GAR_REPO: geolapor-repo
+  RESOURCE_GROUP: geolapor-rg
+  CLUSTER_NAME: geolapor-cluster
   BACKEND_IMAGE: geolapor-backend
   FRONTEND_IMAGE: geolapor-frontend
 
 jobs:
   deploy:
-    name: Build and Deploy to GCP
+    name: Build and Deploy to AKS
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: 'read'
-      id-token: 'write'
 
     steps:
       # ==============================
@@ -28,73 +23,72 @@ jobs:
         uses: actions/checkout@v4
 
       # ==============================
-      # 1. AUTHENTICATION (WIF)
+      # 1. AUTHENTICATION (Docker & Azure)
       # ==============================
-      - name: Google Auth
-        id: auth
-        uses: google-github-actions/auth@v2
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
         with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.SA_EMAIL }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Docker Auth to Artifact Registry
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+      - name: Get AKS Credentials
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
 
       # ==============================
-      # 2. BUILD & DEPLOY BACKEND
+      # 2. BUILD & PUSH BACKEND
       # ==============================
       - name: Build and Push Backend Image
         run: |
           docker build \
-            -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
+            -t ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
             ./geolapor-backend
 
-          docker push \
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-
-      - name: Deploy Backend to Cloud Run
-        id: deploy-backend
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: geolapor-backend
-          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-          region: ${{ env.REGION }}
-          env_vars: |
-            DB_HOST=${{ secrets.DB_HOST_PRIVATE }}
-            DB_PORT=5432
-            DB_USER=${{ secrets.DB_USER }}
-            DB_PASS=${{ secrets.DB_PASSWORD }}
-            DB_NAME=${{ secrets.DB_NAME }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}
-          flags: |
-            --vpc-connector=geolapor-vpc-connector
-            --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:geolapor-db-instance
-            --vpc-egress=all-traffic
-            --allow-unauthenticated
-            --service-account=1019871963440-compute@developer.gserviceaccount.com
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
 
       # ==============================
-      # 3. BUILD & DEPLOY FRONTEND
+      # 3. BUILD & PUSH FRONTEND
       # ==============================
       - name: Build and Push Frontend Image
         run: |
           docker build \
-            --build-arg VITE_API_URL=${{ steps.deploy-backend.outputs.url }}/api \
-            --build-arg VITE_CDN_URL=https://storage.googleapis.com/${{ secrets.GCS_BUCKET_NAME }} \
-            -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            --build-arg VITE_API_URL=${{ secrets.VITE_API_URL }} \
+            --build-arg VITE_CDN_URL=${{ secrets.VITE_CDN_URL }} \
+            -t ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             ./frontend
 
-          docker push \
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
 
-      - name: Deploy Frontend to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
+      # ==============================
+      # 4. INJECT SECRETS, DATABASE & DEPLOY
+      # ==============================
+      - name: Create Kubernetes Secrets
+        run: |
+          kubectl delete secret geolapor-secrets --ignore-not-found
+          kubectl create secret generic geolapor-secrets \
+            --from-literal=db-password=${{ secrets.DB_PASSWORD }} \
+            --from-literal=jwt-secret=${{ secrets.JWT_SECRET }} \
+            --from-literal=azure-conn-string="${{ secrets.AZURE_STORAGE_CONNECTION }}"
+
+      - name: Inject PostGIS Database (ConfigMap)
+        run: |
+          kubectl create configmap db-init-script \
+            --from-file=init.sql=database_geolapor.sql \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy to AKS
+        uses: azure/k8s-deploy@v5
         with:
-          service: geolapor-frontend
-          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-          region: ${{ env.REGION }}
-          flags: --port=80 --allow-unauthenticated
+          manifests: |
+            k8s/geolapor-backend.yaml
+            k8s/geolapor-frontend.yaml
+          images: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
