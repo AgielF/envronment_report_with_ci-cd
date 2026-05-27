@@ -76,7 +76,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: DOCKER_IMAGE_PLACEHOLDER 
+        image: agielf/geolapor-backend 
         ports:
         - containerPort: 3000
         env:
