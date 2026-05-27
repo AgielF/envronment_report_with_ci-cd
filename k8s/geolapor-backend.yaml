@@ -34,6 +34,10 @@ spec:
           value: password123 # Aman di sini karena ini hanya di level server internal
         - name: POSTGRES_DB
           value: geolapor
+        # =============== FIX ERROR LOST+FOUND ===============
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        # ====================================================
         ports:
         - containerPort: 5432
         volumeMounts:
