@@ -23,7 +23,7 @@ kind: Service
 metadata:
   name: geolapor-frontend-svc
 spec:
-  type: LoadBalancer
+  type: ClusterIP # <--- SUDAH DIUBAH KE CLUSTERIP
   ports:
   - port: 80
     targetPort: 80

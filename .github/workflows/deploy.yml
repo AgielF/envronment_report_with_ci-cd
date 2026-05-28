@@ -89,6 +89,7 @@ jobs:
           manifests: |
             k8s/geolapor-backend.yaml
             k8s/geolapor-frontend.yaml
+            k8s/geolapor-ingress.yaml
           images: |
             ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
             ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
