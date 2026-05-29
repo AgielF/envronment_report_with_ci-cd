@@ -80,6 +80,13 @@ spec:
       containers:
       - name: backend
         image: agielf/geolapor-backend 
+        # =============== PENAMBAHAN UNTUK HPA ===============
+        resources:
+          requests:
+            cpu: "100m"
+          limits:
+            cpu: "250m"
+        # ====================================================
         ports:
         - containerPort: 3000
         env:
@@ -115,7 +122,7 @@ kind: Service
 metadata:
   name: geolapor-backend-svc
 spec:
-  type: ClusterIP # <--- SUDAH DIUBAH KE CLUSTERIP
+  type: ClusterIP
   ports:
   - port: 80
     targetPort: 3000
